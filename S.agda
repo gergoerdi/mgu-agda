@@ -26,7 +26,8 @@ Con : Set
 Con = ℕ
 
 data Type (n : ℕ) : Set where
-  TCon : Con → Type n
+  -- TCon : Con → Type n
+  TCon : Type n
   TVar : TV n → Type n
   TApp : Type n → Type n → Type n
 
@@ -35,14 +36,14 @@ rename f = TVar ∘ f
 
 substitute : {n m : ℕ} → (Fin n → Type m) → (Type n → Type m)
 substitute f (TVar i)    = f i
-substitute f (TCon c)    = TCon c
+substitute f TCon        = TCon
 substitute f (TApp t t′) = TApp (substitute f t) (substitute f t′)
 
 bind : {n m l : ℕ} → (Fin m → Type n) → (Fin l → Type m) → (Fin l → Type n)
 bind f g = substitute f ∘ g
 
 occurs-check : ∀ {n} (x : Fin (suc n)) → Type (suc n) → Maybe (Type n)
-occurs-check x (TCon c) = just (TCon c)
+occurs-check x TCon = just TCon
 occurs-check x (TVar y) = TVar <$> thick x y
 occurs-check x (TApp t₁ t₂) = TApp <$> occurs-check x t₁ ⊛ occurs-check x t₂
 
