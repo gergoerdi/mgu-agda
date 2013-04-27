@@ -58,4 +58,9 @@ module for-Props where
 
   for-unify : ∀ {n} x (t : Type (suc n)) {t′ : Type n} → occurs-check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
-  for-unify x t eq = {!!}
+  for-unify x TCon eq = just-inv (eq ⟨ trans ⟩ cong just (maybe-nothing (thick-nofix x)))
+    where
+    maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
+    maybe-nothing refl = refl
+  for-unify x (TVar y) eq = {!!}
+  for-unify x (TApp t₁ t₂) eq = {!!}
