@@ -67,31 +67,6 @@ data AList : (m n : ℕ) → Set where
   anil : ∀ {n} → AList n n
   _asnoc_/_ : ∀ {m n} → (σ : AList m n) → (t′ : Term m) → (x : Fin (suc m)) → AList (suc m) n
 
--- open import Data.Star
--- open import Data.Star.Decoration
--- open import Data.Product
-
--- AList : (m n : ℕ) → Set
--- AList m n = Data.Star.Decoration.All {I = ℕ × ℕ} {T = T} (λ {m,n} _ → let m = proj₁ m,n in Term m × Fin (suc m)) #m,n -- (Star {I = ℕ} T m n) -- Star {I = ℕ} T m n
---   where
---   T : Rel (ℕ × ℕ) _
---   T (sm , _) (m , _) = sm ≡ suc m
-
---   #m,n : Star {I = ℕ × ℕ} T {!!} {!!}
---   #m,n = {!!}
-
--- anil : ∀ {n} → AList n n
--- anil = ε
-
--- _asnoc_/_ : ∀ {m n} → (σ : AList m n) → (t′ : Term m) → (x : Fin (suc m)) → AList (suc m) n
--- σ asnoc t′ / x = ↦ (t′ , x) ◅ σ
-
--- ▷_ : ∀ {m n} → (r : Fin m → Fin n) → (Fin m → Term n)
--- ▷_ = rename
-
--- _◁ : ∀ {m n} → (f : Fin m → Term n) → (Term m → Term n)
--- _◁ = substitute
-
 sub : ∀ {m n} → (σ : AList m n) → Fin m → Term n
 sub anil = var
 sub (σ asnoc t′ / x) = (sub σ) ◇ (t′ for x)
