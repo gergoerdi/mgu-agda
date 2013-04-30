@@ -111,15 +111,17 @@ module for-Props where
 
 open import Data.Star hiding (_>>=_)
 
-data [_/_] : ℕ → ℕ → Set where
-  _/_ : ∀ {m} → (t′ : Term m) → (x : Var (suc m)) → [ m / suc m ]
+data _//_ : ℕ → ℕ → Set where
+  _/_ : ∀ {m} → (t′ : Term m) → (x : Var (suc m)) → m // suc m
 
 _⇝⋆_ : (m n : ℕ) → Set
-m ⇝⋆ n = Star (flip [_/_]) m n
+m ⇝⋆ n = Star (flip _//_) m n
 
 sub : ∀ {m n} → (σ : m ⇝⋆ n) → (m ⇝ n)
-sub ε = var
-sub (t′ / x ◅ σ) =  (sub σ) ◇ (t′ for x)
+sub = Data.Star.fold (_⇝_) f var
+  where
+  f : ∀ {l m n : ℕ} → m // l → m ⇝ n → (l ⇝ n)
+  f (t′ / x) k = k ◇ (t′ for x)
 
 _++_ : ∀ {l m n} → (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → l ⇝⋆ n
 _++_ = _◅◅_
