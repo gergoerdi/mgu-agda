@@ -46,11 +46,9 @@ substitute f (t fork u) = (substitute f t) fork (substitute f u)
 _◇_ : ∀ {l m n} → (m ⇝ n) → (l ⇝ m) → (l ⇝ n)
 f ◇ g = substitute f ∘ g
 
-_≐_ : ∀ {a b} {A : Set a} {B : A → Set b} → (f g : (x : A) → B x) → Set _
-f ≐ g = ∀ x → f x ≡ g x
 
 module substitute-Props where
-  substitute-id : ∀ {m} → substitute {m} var ≐ id
+  substitute-id : ∀ {m} → substitute {m} var ≗ id
   substitute-id {m} leaf = refl
   substitute-id {m} (var x) = refl
   substitute-id {m} (t₁ fork t₂) = substitute-id t₁ ⟨ cong₂ _fork_ ⟩ substitute-id t₂
@@ -63,12 +61,12 @@ module substitute-Props where
   substitute-leaf : ∀ {m n} {f : m ⇝ n} → leaf ≡ substitute f leaf
   substitute-leaf = refl
 
-  substitute-assoc : ∀ {l m n} (f : m ⇝ n) (g : l ⇝ m) → substitute (substitute f ∘ g) ≐ (substitute f ∘ substitute g)
+  substitute-assoc : ∀ {l m n} (f : m ⇝ n) (g : l ⇝ m) → substitute (substitute f ∘ g) ≗ substitute f ∘ substitute g
   substitute-assoc f g leaf = refl
   substitute-assoc f g (var x) = refl
   substitute-assoc f g (t₁ fork t₂) = substitute-assoc f g t₁ ⟨ cong₂ _fork_ ⟩ substitute-assoc f g t₂
 
-  ◇-assoc : ∀ {k l m n} (f : m ⇝ n) (g : l ⇝ m) (h : k ⇝ l) → ((f ◇ g) ◇ h) ≐ (f ◇ (g ◇ h))
+  ◇-assoc : ∀ {k l m n} (f : m ⇝ n) (g : l ⇝ m) (h : k ⇝ l) → (f ◇ g) ◇ h ≗ f ◇ (g ◇ h)
   ◇-assoc f g h x =  substitute-assoc f g (h x)
 
 check : ∀ {n} (x : Var (suc n)) → Term (suc n) → Maybe (Term n)
@@ -127,10 +125,10 @@ _++_ = _◅◅_
 module sub-Props where
   open import Data.Star.Properties
 
-  sub-id : ∀ {m} → sub {m} ε ≐ var
+  sub-id : ∀ {m} → sub {m} ε ≗ var
   sub-id = λ x → refl
 
-  sub-++ : ∀ {m n l} (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → sub (σ ++ ρ) ≐ (sub ρ ◇ sub σ)
+  sub-++ : ∀ {m n l} (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → sub (σ ++ ρ) ≗ sub ρ ◇ sub σ
   sub-++ ε ρ y = refl
   sub-++ (t′ / x ◅ σ) ρ y = -- cong {!!} (sub-++ σ ρ {!!})
     begin
