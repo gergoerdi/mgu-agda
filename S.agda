@@ -5,7 +5,7 @@ module S where
 open import Data.Nat
 open import Data.Fin
 -- open import Data.Fin.Props renaming (_≟_ to _F≟_)
-open import Function using (_∘_; _⟨_⟩_; id)
+open import Function using (_∘_; _⟨_⟩_; id; flip)
 
 open import Relation.Binary.Core
 open import Relation.Binary.PropositionalEquality
@@ -109,17 +109,20 @@ module for-Props where
     maybe-just : ∀ {A B : Set} {f : A → B} {y mx x} → mx ≡ just x → f x ≡ maybe′ f y mx
     maybe-just refl = refl
 
-data _⇝⋆_ : (m n : ℕ) → Set where
-  ε : ∀ {n} → n ⇝⋆ n
-  _/_◁_ : ∀ {m n} → (t′ : Term m) → (x : Var (suc m)) → (σ : m ⇝⋆ n) → suc m ⇝⋆ n
+open import Data.Star hiding (_>>=_)
+
+data [_/_] : ℕ → ℕ → Set where
+  _/_ : ∀ {m} → (t′ : Term m) → (x : Var (suc m)) → [ m / suc m ]
+
+_⇝⋆_ : (m n : ℕ) → Set
+m ⇝⋆ n = Star (flip [_/_]) m n
 
 sub : ∀ {m n} → (σ : m ⇝⋆ n) → (m ⇝ n)
 sub ε = var
-sub (t′ / x ◁ σ) = (sub σ) ◇ (t′ for x)
+sub (t′ / x ◅ σ) =  (sub σ) ◇ (t′ for x)
 
 _++_ : ∀ {l m n} → (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → l ⇝⋆ n
-ε ++ ρ = ρ
-(t′ / x ◁ σ) ++ ρ = t′ / x ◁ (σ ++ ρ)
+_++_ = _◅◅_
 
 module sub-Props where
   sub-id : ∀ {m} → sub {m} ε ≐ var
@@ -127,26 +130,26 @@ module sub-Props where
 
   sub-++ : ∀ {m n l} (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → sub (σ ++ ρ) ≐ (sub ρ ◇ sub σ)
   sub-++ ε ρ y = refl
-  sub-++ (t′ / x ◁ σ) ρ y = {!!} -- cong {!!} (sub-++ σ ρ {!!})
+  sub-++ (t′ / x ◅ σ) ρ y = {!!} -- cong {!!} (sub-++ σ ρ {!!})
 
 open import Data.Product
 
 _⇝⋆□ : ℕ → Set
 m ⇝⋆□ = ∃ (_⇝⋆_ m)
 
-_/_◁?_ : ∀ {m} (t′ : Term m) (x : Var (suc m)) (a : m ⇝⋆□) → (suc m ⇝⋆□)
-t′ / x ◁? (n , σ) = n , t′ / x ◁ σ
+_/_◅?_ : ∀ {m} (t′ : Term m) (x : Var (suc m)) (a : m ⇝⋆□) → (suc m ⇝⋆□)
+t′ / x ◅? (n , σ) = n , t′ / x ◅ σ
 
 mgu : ∀ {m} (s t : Term m) → Maybe (m ⇝⋆□)
 mgu {m} s t = go s t (m , ε)
   where
   flexFlex : ∀ {m} (x y : Var m) → ∃ (_⇝⋆_ m)
   flexFlex {zero} () ()
-  flexFlex {suc m} x y = maybe′ (λ y′ → m , var y′ / x ◁ ε) (suc m , ε) (thick x y)
+  flexFlex {suc m} x y = maybe′ (λ y′ → m , var y′ / x ◅ ε) (suc m , ε) (thick x y)
 
   flexRigid : ∀ {m} (x : Var m) → (t : Term m) → Maybe (∃ (_⇝⋆_ m))
   flexRigid {zero} () t
-  flexRigid {suc m} x t = (λ t′ → m , t′ / x ◁ ε) <$> check x t
+  flexRigid {suc m} x t = (λ t′ → m , t′ / x ◅ ε) <$> check x t
 
   go : ∀ {m} (s t : Term m) → (m ⇝⋆□) → Maybe (m ⇝⋆□)
   go leaf         leaf         acc             = just acc
@@ -156,4 +159,4 @@ mgu {m} s t = go s t (m , ε)
   go (var x)      (var y)      (m , ε)         = just (flexFlex x y)
   go (var x)      t            (m , ε)         = flexRigid x t
   go t            (var x)      (m , ε)         = flexRigid x t
-  go s            t            (n , r / z ◁ σ) = (λ a → r / z ◁? a) <$> go (substitute (r for z) s) (substitute (r for z) t) (n , σ)
+  go s            t            (n , r / z ◅ σ) = (λ a → r / z ◅? a) <$> go (substitute (r for z) s) (substitute (r for z) t) (n , σ)
