@@ -43,6 +43,9 @@ substitute f (var i)    = f i
 substitute f leaf       = leaf
 substitute f (t fork u) = (substitute f t) fork (substitute f u)
 
+_◇_ : ∀ {l m n} → (m ⇝ n) → (l ⇝ m) → (l ⇝ n)
+f ◇ g = substitute f ∘ g
+
 _≐_ : ∀ {a b} {A : Set a} {B : A → Set b} → (f g : (x : A) → B x) → Set _
 f ≐ g = ∀ x → f x ≡ g x
 
@@ -60,8 +63,13 @@ module substitute-Props where
   substitute-leaf : ∀ {m n} {f : m ⇝ n} → leaf ≡ substitute f leaf
   substitute-leaf = refl
 
-_◇_ : {n m l : ℕ} → (m ⇝ n) → (l ⇝ m) → (l ⇝ n)
-f ◇ g = substitute f ∘ g
+  substitute-assoc : ∀ {l m n} (f : m ⇝ n) (g : l ⇝ m) → substitute (substitute f ∘ g) ≐ (substitute f ∘ substitute g)
+  substitute-assoc f g leaf = refl
+  substitute-assoc f g (var x) = refl
+  substitute-assoc f g (t₁ fork t₂) = substitute-assoc f g t₁ ⟨ cong₂ _fork_ ⟩ substitute-assoc f g t₂
+
+  ◇-assoc : ∀ {k l m n} (f : m ⇝ n) (g : l ⇝ m) (h : k ⇝ l) → ((f ◇ g) ◇ h) ≐ (f ◇ (g ◇ h))
+  ◇-assoc f g h x =  substitute-assoc f g (h x)
 
 check : ∀ {n} (x : Var (suc n)) → Term (suc n) → Maybe (Term n)
 check x leaf = just leaf
@@ -79,14 +87,6 @@ module for-Props where
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
-  -- for-unify x leaf eq = just-inv (eq ⟨ trans ⟩ cong just (maybe-nothing (thick-nofix x)))
-  --   where
-  --   maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
-  --   maybe-nothing refl = refl
-  -- for-unify x (var y) eq = {!!}
-  -- for-unify x (t₁ fork t₂) eq = {!!}
-  open substitute-Props
-
   for-unify {n} x t {t′} eq =
     begin
       substitute (t′ for x) t
@@ -103,6 +103,7 @@ module for-Props where
     ∎
     where
     open Relation.Binary.PropositionalEquality.≡-Reasoning
+    open substitute-Props
     maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
     maybe-nothing refl = refl
 
