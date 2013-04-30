@@ -79,12 +79,32 @@ module for-Props where
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
-  for-unify x leaf eq = just-inv (eq ⟨ trans ⟩ cong just (maybe-nothing (thick-nofix x)))
+  -- for-unify x leaf eq = just-inv (eq ⟨ trans ⟩ cong just (maybe-nothing (thick-nofix x)))
+  --   where
+  --   maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
+  --   maybe-nothing refl = refl
+  -- for-unify x (var y) eq = {!!}
+  -- for-unify x (t₁ fork t₂) eq = {!!}
+  open substitute-Props
+
+  for-unify {n} x t {t′} eq =
+    begin
+      substitute (t′ for x) t
+    ≡⟨ {!!} ⟩
+      substitute (t′ for x) (substitute (rename (thin x)) t′)
+    ≡⟨ {!!} ⟩
+      substitute (t′ for x ∘ thin x) t′
+    ≡⟨ substitute-≡ (cong (maybe′ var t′) ∘ thick-inv x) t′ ⟩
+      substitute var t′
+    ≡⟨ substitute-id t′ ⟩
+      t′
+    ≡⟨ maybe-nothing (thick-nofix x) ⟩
+      (t′ for x) x
+    ∎
     where
+    open Relation.Binary.PropositionalEquality.≡-Reasoning
     maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
     maybe-nothing refl = refl
-  for-unify x (var y) eq = {!!}
-  for-unify x (app t₁ t₂) eq = {!!}
 
     maybe-just : ∀ {A B : Set} {f : A → B} {y mx x} → mx ≡ just x → f x ≡ maybe′ f y mx
     maybe-just refl = refl
