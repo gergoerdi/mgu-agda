@@ -107,9 +107,6 @@ module for-Props where
     maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
     maybe-nothing refl = refl
 
-    maybe-just : ∀ {A B : Set} {f : A → B} {y mx x} → mx ≡ just x → f x ≡ maybe′ f y mx
-    maybe-just refl = refl
-
 open import Data.Star hiding (_>>=_)
 
 data _//_ : ℕ → ℕ → Set where
@@ -119,7 +116,7 @@ _⇝⋆_ : (m n : ℕ) → Set
 m ⇝⋆ n = Star (flip _//_) m n
 
 sub : ∀ {m n} → (σ : m ⇝⋆ n) → (m ⇝ n)
-sub = Data.Star.fold (_⇝_) f var
+sub = Data.Star.fold _⇝_ f var
   where
   f : ∀ {l m n : ℕ} → m // l → m ⇝ n → (l ⇝ n)
   f (t′ / x) k = k ◇ (t′ for x)
@@ -128,12 +125,26 @@ _++_ : ∀ {l m n} → (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → l ⇝⋆ n
 _++_ = _◅◅_
 
 module sub-Props where
+  open import Data.Star.Properties
+
   sub-id : ∀ {m} → sub {m} ε ≐ var
   sub-id = λ x → refl
 
   sub-++ : ∀ {m n l} (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → sub (σ ++ ρ) ≐ (sub ρ ◇ sub σ)
   sub-++ ε ρ y = refl
-  sub-++ (t′ / x ◅ σ) ρ y = {!!} -- cong {!!} (sub-++ σ ρ {!!})
+  sub-++ (t′ / x ◅ σ) ρ y = -- cong {!!} (sub-++ σ ρ {!!})
+    begin
+      sub (t′ / x ◅ σ ++ ρ) y
+    ≡⟨ refl ⟩
+      (sub (σ ++ ρ) ◇ (t′ for x)) y
+    ≡⟨ {!sub-++!} ⟩
+      ((sub ρ ◇ sub σ) ◇ (t′ for x)) y
+    ≡⟨ ◇-assoc (sub ρ) (sub σ) (t′ for x) y ⟩
+      (sub ρ ◇ (sub σ ◇ (t′ for x))) y
+    ∎
+    where
+    open Relation.Binary.PropositionalEquality.≡-Reasoning
+    open substitute-Props
 
 open import Data.Product
 
