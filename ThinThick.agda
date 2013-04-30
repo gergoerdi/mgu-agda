@@ -35,7 +35,7 @@ thin-nofix zero ()
 thin-nofix (suc x) {zero} ()
 thin-nofix (suc x) {suc y} eq = thin-nofix x (drop-suc eq)
 
-thin-solve : ∀ {n} x y → x ≢ y → Σ[ y₀ ∈ _ ](thin {n} x y₀ ≡ y)
+thin-solve : ∀ {n} x y → x ≢ y → ∃ (λ y₀ → thin {n} x y₀ ≡ y)
 thin-solve zero zero neq = ⊥-elim (neq refl)
 thin-solve zero (suc y₀) neq = y₀ , refl
 thin-solve {zero} (suc ()) _ neq
@@ -44,10 +44,12 @@ thin-solve {suc n} (suc x) (suc y) neq with thin-solve x y (neq ∘ cong suc)
 thin-solve {suc n} (suc x) (suc y) neq | y₀′ , eq = suc y₀′ , cong suc eq
 
 open import Data.Maybe
+open import Category.Monad
 open import Category.Applicative
-open import MaybeExtras
 open import Level using () renaming (zero to ℓ₀)
-open RawApplicative {ℓ₀} Data.Maybe.applicative
+open RawMonad {ℓ₀} monad using (_>>=_; return) renaming (rawIApplicative to applicative)
+open RawApplicative applicative
+open import MaybeExtras
 
 thick : {n : ℕ} → (x y : Fin (suc n)) → Maybe (Fin n)
 thick zero zero               = nothing
@@ -71,3 +73,8 @@ thick-thin {suc n} (suc x) zero = Just refl
 thick-thin {suc n} (suc x) (suc y) with thick x y | inspect (thick x) y
 thick-thin {suc n} (suc x) (suc y) | just y′ | [ eq ] = Just (cong suc (Partial-Just (subst (Partial _ _) eq (thick-thin x y))))
 thick-thin {suc n} (suc x) (suc y) | nothing | [ eq ] = Nothing (cong suc (Partial-Nothing (subst (Partial _ _) eq (thick-thin x y))))
+
+thick-inv : ∀ {n} x y → thick {n} x (thin x y) ≡ just y
+thick-inv zero y = refl
+thick-inv (suc x) zero = refl
+thick-inv (suc x) (suc y) = cong (_<$>_ suc) (thick-inv x y)
