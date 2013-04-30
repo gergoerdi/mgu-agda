@@ -1,24 +1,10 @@
 module MaybeExtras where
 
-open import Data.Maybe hiding (applicative)
+open import Data.Maybe
 
 open import Relation.Binary.Core
 open import Relation.Nullary
 open import Data.Empty
-
--- open import Category.Applicative
-
--- applicative : ∀ {a} → RawApplicative {a} Maybe
--- applicative {a} = record
---   { pure = just
---   ; _⊛_ = app
---   }
---   where
---     open import Category.Functor
---     open RawFunctor {a} Data.Maybe.functor
---     app : ∀ {A B} → Maybe (A → B) → Maybe A → Maybe B
---     app (just f) mx = f <$> mx
---     app nothing mx = nothing
 
 just≢nothing : ∀ {a} {A : Set a} {x : A} → ¬ (_≡_ {A = Maybe A} (just x) nothing)
 just≢nothing ()
