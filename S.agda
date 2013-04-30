@@ -46,7 +46,6 @@ substitute f (t fork u) = (substitute f t) fork (substitute f u)
 _◇_ : ∀ {l m n} → (m ⇝ n) → (l ⇝ m) → (l ⇝ n)
 f ◇ g = substitute f ∘ g
 
-
 module substitute-Props where
   substitute-id : ∀ {m} → substitute {m} var ≗ id
   substitute-id {m} leaf = refl
@@ -65,6 +64,11 @@ module substitute-Props where
   substitute-assoc f g leaf = refl
   substitute-assoc f g (var x) = refl
   substitute-assoc f g (t₁ fork t₂) = substitute-assoc f g t₁ ⟨ cong₂ _fork_ ⟩ substitute-assoc f g t₂
+
+  substitute-rename : ∀ {l m n} → (f : m ⇝ n) (g : Var l → Var m) → substitute f ∘ substitute (rename g) ≗ substitute (f ∘ g)
+  substitute-rename f g leaf = refl
+  substitute-rename f g (var x) = refl
+  substitute-rename f g (t₁ fork t₂) = substitute-rename f g t₁ ⟨ cong₂ _fork_ ⟩ substitute-rename f g t₂
 
   ◇-assoc : ∀ {k l m n} (f : m ⇝ n) (g : l ⇝ m) (h : k ⇝ l) → (f ◇ g) ◇ h ≗ f ◇ (g ◇ h)
   ◇-assoc f g h x =  substitute-assoc f g (h x)
@@ -90,7 +94,7 @@ module for-Props where
       substitute (t′ for x) t
     ≡⟨ {!!} ⟩
       substitute (t′ for x) (substitute (rename (thin x)) t′)
-    ≡⟨ {!!} ⟩
+    ≡⟨ substitute-rename (t′ for x) (thin x) t′ ⟩
       substitute (t′ for x ∘ thin x) t′
     ≡⟨ substitute-≡ (cong (maybe′ var t′) ∘ thick-inv x) t′ ⟩
       substitute var t′
