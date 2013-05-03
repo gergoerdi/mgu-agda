@@ -11,6 +11,7 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Empty
 
 open import Data.Maybe
+open import MaybeExtras
 
 open import ThinThick
 open import ThinThick.Properties
@@ -51,25 +52,52 @@ module for-Props where
     maybe-just : ∀ {f y mx x} → mx ≡ just x → maybe′ f y mx ≡ f x
     maybe-just refl = refl
 
-  check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ (uncurry λ t₁′ t₂′ → t′ ≡ t₁′ fork t₂′)
-  check-fork x leaf leaf {.leaf fork leaf} refl = (leaf , leaf) , refl
-  check-fork x leaf (var x₁) {leaf} eq = {!eq!}
-  check-fork x leaf (var x₁) {var x₂} eq = {!eq!}
-  check-fork x leaf (var x₁) {t′ fork t′₁} eq = {!eq!}
-  check-fork x leaf (t₂ fork t₃) eq = {!!}
-  check-fork x (var x₁) t₂ eq = {!!}
-  check-fork x (t₁ fork t₂) t₃ eq = {!!}
+  check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ (uncurry λ t₁′ t₂′ → t₁′ fork t₂′ ≡ t′)
+  check-fork x t₁ t₂ eq with check x t₁ | check x t₂
+  check-fork x t₁ t₂ refl | just t₁′ | just t₂′ = (t₁′ , t₂′) , refl
+  check-fork x t₁ t₂ () | just t₁′ | nothing
+  check-fork x t₁ t₂ () | nothing | p2
 
   checkˡ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₁ ≡ just t″
-  checkˡ x t₁ t₂ eq with check-fork x t₁ t₂ eq | inspect (check-fork x t₁ t₂) eq
-  checkˡ x t₁ t₂ eq | (t₁′ , t₂′) , eq′ | [ prf ] = t₁′ , {!!}
+  checkˡ x t₁ t₂ eq with check x t₁ | check x t₂
+  checkˡ x t₁ t₂ eq | just t₁′ | just t₂′ = t₁′ , refl
+  checkˡ x t₁ t₂ () | just x₁ | nothing
+  checkˡ x t₁ t₂ () | nothing | q
+
+  checkʳ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₂ ≡ just t″
+  checkʳ x t₁ t₂ eq with check x t₁ | check x t₂
+  checkʳ x t₁ t₂ eq | just t₁′ | just t₂′ = t₂′ , refl
+  checkʳ x t₁ t₂ () | just x₁ | nothing
+  checkʳ x t₁ t₂ () | nothing | q
 
   for-unify₀ : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
                substitute (t′ for x) t ≡ substitute (t′ for x) (substitute (rename (thin x)) t′)
   for-unify₀ x leaf refl = refl
   for-unify₀ x (var y) eq = {!eq!}
-  for-unify₀ x (t₁ fork t₂) eq with for-unify₀ x t₁ {!!} | for-unify₀ x t₂ {!!}
-  ... | p | q = {!!}
+  for-unify₀ x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
+  for-unify₀ x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | (t₁′ , t₂′) , refl = {!!}
+    -- begin
+    --   substitute ((t₁′ fork t₂′) for x) t₁ fork substitute ((t₁′ fork t₂′) for x) t₂
+    -- ≡⟨ for-unify₀ x t₁ {!!} ⟨ cong₂ _fork_ ⟩ for-unify₀ x t₂ {!!} ⟩
+    --   {!!}
+    -- ≡⟨ {!!} ⟩
+    --   {!!}
+    -- ∎
+    -- where
+    -- open Relation.Binary.PropositionalEquality.≡-Reasoning
+  -- for-unify₀ x (t₁ fork t₂) eq with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
+  -- for-unify₀ x (t₁ fork t₂) {t′} eq | t₁′ , eq₁ | t₂′ , eq₂ = {!t′!}
+  -- for-unify₀ x (t₁ fork t₂) {t′} eq | t₁′ , eq₁ | t₂′ , eq₂ with for-unify₀ x t₁ eq₁ | for-unify₀ x t₂ eq₂
+  -- ... | p | q =
+  --   begin
+  --     substitute (t′ for x) t₁ fork substitute (t′ for x) t₂
+  --   ≡⟨ {!p!} ⟨ cong₂ _fork_ ⟩ {!!} ⟩
+  --     {!!}
+  --   ≡⟨ {!!} ⟩
+  --     {!!}
+  --   ∎
+  --   where
+  --   open Relation.Binary.PropositionalEquality.≡-Reasoning
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
