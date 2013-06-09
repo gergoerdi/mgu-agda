@@ -50,7 +50,7 @@ thick-nofix {suc n} (suc x) with thick x x | inspect (thick x) x
 thick-nofix {suc n} (suc x) | just _  | [ eq ] = ⊥-elim (just≢nothing (sym eq ⟨ trans ⟩ thick-nofix x))
 thick-nofix {suc n} (suc x) | nothing | [ eq ] = refl
 
-thick-thin : ∀ {n} x y → Partial (λ y′ → y ≡ thin x y′) (y ≡ x) (thick {n} x y)
+thick-thin : ∀ {n} x y → Partial (y ≡ x) (λ y′ → y ≡ thin x y′) (thick {n} x y)
 thick-thin zero zero = Nothing refl
 thick-thin zero (suc y) = Just refl
 thick-thin {zero} (suc ()) _
