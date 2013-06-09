@@ -8,6 +8,7 @@ open import Function using (_∘_; _⟨_⟩_; id; flip)
 
 open import Relation.Binary.Core
 open import Relation.Binary.PropositionalEquality
+open Relation.Binary.PropositionalEquality.≡-Reasoning
 open import Data.Empty
 
 open import Data.Maybe
@@ -15,6 +16,12 @@ open import MaybeExtras
 
 open import ThinThick
 open import ThinThick.Properties
+
+open import Level using () renaming (zero to ℓ₀)
+open import Category.Monad
+open RawMonad {ℓ₀} monad using (_>>=_; return) renaming (rawIApplicative to applicative)
+open import Category.Applicative
+open RawApplicative {ℓ₀} applicative
 
 module substitute-Props where
   substitute-id : ∀ {m} → substitute {m} var ≗ id
@@ -55,8 +62,8 @@ module for-Props where
   check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ (uncurry λ t₁′ t₂′ → t₁′ fork t₂′ ≡ t′)
   check-fork x t₁ t₂ eq with check x t₁ | check x t₂
   check-fork x t₁ t₂ refl | just t₁′ | just t₂′ = (t₁′ , t₂′) , refl
-  check-fork x t₁ t₂ () | just t₁′ | nothing
   check-fork x t₁ t₂ () | nothing | p2
+  check-fork x t₁ t₂ () | just t₁′ | nothing
 
   checkˡ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₁ ≡ just t″
   checkˡ x t₁ t₂ eq with check x t₁ | check x t₂
@@ -70,21 +77,78 @@ module for-Props where
   checkʳ x t₁ t₂ () | just x₁ | nothing
   checkʳ x t₁ t₂ () | nothing | q
 
+  check-occurs-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → y ≢ x
+  check-occurs-var x .x eq refl with thick x x | thick-nofix x
+  check-occurs-var x .x eq refl | just _ | ()
+  check-occurs-var x .x () refl | nothing | _
+
+  check-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → ∃ λ y′ → check x (var y) ≡ just (var y′)
+  check-var x y eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  check-var {n} x .(thin x y′) eq | y′ , refl = y′ , lem
+    where
+    lem : var <$> thick x (thin x y′) ≡ just (var y′)
+    lem =
+      begin
+        var <$> thick x (thin x y′)
+      ≡⟨ cong (λ ξ → var <$> ξ) (thick-inv x y′) ⟩
+        var <$> just y′
+      ≡⟨ refl ⟩
+        just (var y′)
+      ∎
+
+  check-occurs : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ → (t″ t‴ : Term n) → substitute (t″ for x) t ≡ substitute (t‴ for x) t
+  check-occurs x leaf eq t″ t‴ = refl
+  check-occurs x (var y) eq t″ t‴ with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  check-occurs x (var .(thin x y′)) {t′} eq t″ t‴ | y′ , refl =
+    begin
+      maybe′ var t″ (thick x (thin x y′))
+    ≡⟨ cong (maybe′ var t″) (thick-inv x y′) ⟩
+      var y′
+    ≡⟨ sym (cong (maybe′ var t‴) (thick-inv x y′)) ⟩
+      maybe′ var t‴ (thick x (thin x y′))
+    ∎
+  check-occurs x (t₁ fork t₂) eq t″ t‴ with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
+  check-occurs x (t₁ fork t₂) eq t″ t‴ | _ , eq₁ | _ , eq₂ = check-occurs x t₁ eq₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ eq₂ t″ t‴
+
+  foo : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ → ∀ t″ → substitute (t″ for x) t ≡ t′
+  foo x leaf refl t″ = refl
+  foo x (var y) {t′} eq t″ with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  foo x (var .(thin x y′)) {t′} eq t″ | y′ , refl = {!t′!}
+    -- begin
+    --   maybe′ var t″ (thick x (thin x y′))
+    -- ≡⟨ cong (maybe′ var t″) (thick-inv x y′) ⟩
+    --   var y′
+    -- ≡⟨ {!!} ⟩
+    --   t′
+    -- ∎
+  foo x (t fork t₁) {t′} eq t″ = {!t′!}
+
   for-unify₀ : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
                substitute (t′ for x) t ≡ substitute (t′ for x) (substitute (rename (thin x)) t′)
+  -- for-unify₀ x t prf = check-occurs x {!t!} {!!} {!!}
   for-unify₀ x leaf refl = refl
-  for-unify₀ x (var y) eq = {!eq!}
+  for-unify₀ x (var y) eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  for-unify₀ x (var .(thin x y′)) {t′} eq | y′ , refl =
+    begin
+      maybe′ var t′ (thick x (thin x y′))
+    ≡⟨ cong (maybe′ var t′) (thick-inv x y′) ⟩
+      maybe′ var t′ (just y′)
+    ≡⟨ refl ⟩
+      var y′
+    ≡⟨ {!!} ⟩
+      {!!}
+    ≡⟨ {!!} ⟩
+      substitute (t′ for x) (substitute (rename (thin x)) t′)
+    ∎
   for-unify₀ x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
-  for-unify₀ x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | (t₁′ , t₂′) , refl = {!!}
-    -- begin
-    --   substitute ((t₁′ fork t₂′) for x) t₁ fork substitute ((t₁′ fork t₂′) for x) t₂
-    -- ≡⟨ for-unify₀ x t₁ {!!} ⟨ cong₂ _fork_ ⟩ for-unify₀ x t₂ {!!} ⟩
-    --   {!!}
-    -- ≡⟨ {!!} ⟩
-    --   {!!}
-    -- ∎
-    -- where
-    -- open Relation.Binary.PropositionalEquality.≡-Reasoning
+  for-unify₀ x (t₁ fork t₂) {t₁′ fork t₂′} eq | (.t₁′ , .t₂′) , refl = cong₂ _fork_ {!!} {!!} -- (for-unify₀ x {!!} {!!}) {!!}
+  --   begin
+  --     substitute ((t₁′ fork t₂′) for x) t₁ fork substitute ((t₁′ fork t₂′) for x) t₂
+  --   ≡⟨ for-unify₀ x t₁ {!!} ⟨ cong₂ _fork_ ⟩ for-unify₀ x t₂ {!!} ⟩
+  --     {!!}
+  --   ≡⟨ {!!} ⟩
+  --     {!!}
+  --   ∎
   -- for-unify₀ x (t₁ fork t₂) eq with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
   -- for-unify₀ x (t₁ fork t₂) {t′} eq | t₁′ , eq₁ | t₂′ , eq₂ = {!t′!}
   -- for-unify₀ x (t₁ fork t₂) {t′} eq | t₁′ , eq₁ | t₂′ , eq₂ with for-unify₀ x t₁ eq₁ | for-unify₀ x t₂ eq₂
@@ -96,8 +160,6 @@ module for-Props where
   --   ≡⟨ {!!} ⟩
   --     {!!}
   --   ∎
-  --   where
-  --   open Relation.Binary.PropositionalEquality.≡-Reasoning
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
@@ -116,7 +178,6 @@ module for-Props where
       (t′ for x) x
     ∎
     where
-    open Relation.Binary.PropositionalEquality.≡-Reasoning
     open substitute-Props
     maybe-nothing : ∀ {f y mx} → mx ≡ nothing → y ≡ maybe′ f y mx
     maybe-nothing refl = refl
@@ -136,11 +197,12 @@ module sub-Props where
       sub (t′ / x ◅ σ ++ ρ) y
     ≡⟨ refl ⟩
       (sub (σ ++ ρ) ◇ (t′ for x)) y
-    ≡⟨ {!sub-++!} ⟩
-      ((sub ρ ◇ sub σ) ◇ (t′ for x)) y
+    ≡⟨ refl ⟩
+      substitute (sub (σ ++ ρ)) ((t′ for x) y)
+    ≡⟨ substitute-≗ (sub-++ σ ρ) ((t′ for x) y) ⟩
+      substitute (sub ρ ◇ sub σ) ((t′ for x) y)
     ≡⟨ ◇-assoc (sub ρ) (sub σ) (t′ for x) y ⟩
       (sub ρ ◇ (sub σ ◇ (t′ for x))) y
     ∎
     where
-    open Relation.Binary.PropositionalEquality.≡-Reasoning
     open substitute-Props
