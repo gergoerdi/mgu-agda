@@ -22,10 +22,10 @@ module substitute-Props where
   substitute-id {m} (var x) = refl
   substitute-id {m} (t₁ fork t₂) = substitute-id t₁ ⟨ cong₂ _fork_ ⟩ substitute-id t₂
 
-  substitute-≡ : ∀ {m n} {f g : m ⇝ n} → (∀ x → f x ≡ g x) → ∀ t → substitute f t ≡ substitute g t
-  substitute-≡ eq leaf = refl
-  substitute-≡ eq (var x) = eq x
-  substitute-≡ eq (t₁ fork t₂) = substitute-≡ eq t₁ ⟨ cong₂ _fork_ ⟩ substitute-≡ eq t₂
+  substitute-≗ : ∀ {m n} {f g : m ⇝ n} → f ≗ g → substitute f ≗ substitute g
+  substitute-≗ eq leaf = refl
+  substitute-≗ eq (var x) = eq x
+  substitute-≗ eq (t₁ fork t₂) = substitute-≗ eq t₁ ⟨ cong₂ _fork_ ⟩ substitute-≗ eq t₂
 
   substitute-leaf : ∀ {m n} {f : m ⇝ n} → leaf ≡ substitute f leaf
   substitute-leaf = refl
@@ -108,7 +108,7 @@ module for-Props where
       substitute (t′ for x) (substitute (rename (thin x)) t′)
     ≡⟨ substitute-rename (t′ for x) (thin x) t′ ⟩
       substitute (t′ for x ∘ thin x) t′
-    ≡⟨ substitute-≡ (cong (maybe′ var t′) ∘ thick-inv x) t′ ⟩
+    ≡⟨ substitute-≗ (cong (maybe′ var t′) ∘ thick-inv x) t′ ⟩
       substitute var t′
     ≡⟨ substitute-id t′ ⟩
       t′
