@@ -37,6 +37,9 @@ module substitute-Props where
   substitute-leaf : ∀ {m n} {f : m ⇝ n} → leaf ≡ substitute f leaf
   substitute-leaf = refl
 
+  substitute-fork : ∀ {m n} {f : m ⇝ n} {t₁ t₂} {t₁′ t₂′} → t₁′ ≡ substitute f t₁ → t₂′ ≡ substitute f t₂ → t₁′ fork t₂′ ≡ substitute f (t₁ fork t₂)
+  substitute-fork eq₁ eq₂ = cong₂ _fork_ eq₁ eq₂
+
   substitute-assoc : ∀ {l m n} (f : m ⇝ n) (g : l ⇝ m) → substitute (substitute f ∘ g) ≗ substitute f ∘ substitute g
   substitute-assoc f g leaf = refl
   substitute-assoc f g (var x) = refl
@@ -59,32 +62,32 @@ module for-Props where
     maybe-just : ∀ {f y mx x} → mx ≡ just x → maybe′ f y mx ≡ f x
     maybe-just refl = refl
 
-  check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ (uncurry λ t₁′ t₂′ → t₁′ fork t₂′ ≡ t′)
-  check-fork x t₁ t₂ eq with check x t₁ | check x t₂
-  check-fork x t₁ t₂ refl | just t₁′ | just t₂′ = (t₁′ , t₂′) , refl
-  check-fork x t₁ t₂ () | nothing | p2
-  check-fork x t₁ t₂ () | just t₁′ | nothing
-
   checkˡ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₁ ≡ just t″
   checkˡ x t₁ t₂ eq with check x t₁ | check x t₂
   checkˡ x t₁ t₂ eq | just t₁′ | just t₂′ = t₁′ , refl
   checkˡ x t₁ t₂ () | just x₁ | nothing
-  checkˡ x t₁ t₂ () | nothing | q
+  checkˡ x t₁ t₂ () | nothing | _
 
   checkʳ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₂ ≡ just t″
   checkʳ x t₁ t₂ eq with check x t₁ | check x t₂
   checkʳ x t₁ t₂ eq | just t₁′ | just t₂′ = t₂′ , refl
   checkʳ x t₁ t₂ () | just x₁ | nothing
-  checkʳ x t₁ t₂ () | nothing | q
+  checkʳ x t₁ t₂ () | nothing | _
+
+  check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t₁′ → ∃ λ t₂′ → t′ ≡ t₁′ fork t₂′ × check x t₁ ≡ just t₁′ × check x t₂ ≡ just t₂′
+  check-fork x t₁ t₂ eq with check x t₁ | check x t₂
+  check-fork x t₁ t₂ refl | just t₁′ | just t₂′ = t₁′ , t₂′ , refl , refl , refl
+  check-fork x t₁ t₂ () | just x₁ | nothing
+  check-fork x t₁ t₂ () | nothing | _
 
   check-occurs-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → y ≢ x
   check-occurs-var x .x eq refl with thick x x | thick-nofix x
   check-occurs-var x .x eq refl | just _ | ()
   check-occurs-var x .x () refl | nothing | _
 
-  check-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → ∃ λ y′ → check x (var y) ≡ just (var y′)
+  check-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → ∃ λ y′ → t′ ≡ var y′
   check-var x y eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
-  check-var {n} x .(thin x y′) eq | y′ , refl = y′ , lem
+  check-var {n} x .(thin x y′) eq | y′ , refl = y′ , just-inv (sym eq ⟨ trans ⟩ lem)
     where
     lem : var <$> thick x (thin x y′) ≡ just (var y′)
     lem =
@@ -110,18 +113,33 @@ module for-Props where
   check-occurs x (t₁ fork t₂) eq t″ t‴ with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
   check-occurs x (t₁ fork t₂) eq t″ t‴ | _ , eq₁ | _ , eq₂ = check-occurs x t₁ eq₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ eq₂ t″ t‴
 
-  foo : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ → ∀ t″ → substitute (t″ for x) t ≡ t′
-  foo x leaf refl t″ = refl
-  foo x (var y) {t′} eq t″ with force-Just (check-occurs-var x y eq) (thick-thin x y)
-  foo x (var .(thin x y′)) {t′} eq t″ | y′ , refl = {!t′!}
-    -- begin
-    --   maybe′ var t″ (thick x (thin x y′))
-    -- ≡⟨ cong (maybe′ var t″) (thick-inv x y′) ⟩
-    --   var y′
-    -- ≡⟨ {!!} ⟩
-    --   t′
-    -- ∎
-  foo x (t fork t₁) {t′} eq t″ = {!t′!}
+  foo : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
+        t ≡ substitute (rename (thin x)) t′
+  foo x leaf refl = refl
+  foo x (var y) eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  foo x (var .(thin x y′)) {t′} eq | y′ , refl =
+    begin
+      var (thin x y′)
+    ≡⟨ refl ⟩
+      substitute (rename (thin x)) (var y′)
+    ≡⟨ cong (substitute (rename (thin x))) (just-inv unpack-t′) ⟩
+      substitute (rename (thin x)) t′
+    ∎
+    where
+    unpack-t′ : just (var y′) ≡ just t′
+    unpack-t′ =
+      begin
+        just (var y′)
+      ≡⟨ refl ⟩
+        var <$> just y′
+      ≡⟨ cong (λ ξ → var <$> ξ) (sym (thick-inv x y′)) ⟩
+        var <$> thick x (thin x y′)
+      ≡⟨ eq ⟩
+        just t′
+      ∎
+  foo x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
+  foo x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
+    foo x t₁ prf₁ ⟨ cong₂ _fork_ ⟩ foo x t₂ prf₂
 
   for-unify₀ : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
                substitute (t′ for x) t ≡ substitute (t′ for x) (substitute (rename (thin x)) t′)
@@ -141,7 +159,8 @@ module for-Props where
       substitute (t′ for x) (substitute (rename (thin x)) t′)
     ∎
   for-unify₀ x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
-  for-unify₀ x (t₁ fork t₂) {t₁′ fork t₂′} eq | (.t₁′ , .t₂′) , refl = cong₂ _fork_ {!!} {!!} -- (for-unify₀ x {!!} {!!}) {!!}
+  for-unify₀ x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
+    {!!} ⟨ cong₂ _fork_ ⟩ {!!}
   --   begin
   --     substitute ((t₁′ fork t₂′) for x) t₁ fork substitute ((t₁′ fork t₂′) for x) t₂
   --   ≡⟨ for-unify₀ x t₁ {!!} ⟨ cong₂ _fork_ ⟩ for-unify₀ x t₂ {!!} ⟩
