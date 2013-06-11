@@ -62,18 +62,6 @@ module for-Props where
     maybe-just : ∀ {f y mx x} → mx ≡ just x → maybe′ f y mx ≡ f x
     maybe-just refl = refl
 
-  checkˡ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₁ ≡ just t″
-  checkˡ x t₁ t₂ eq with check x t₁ | check x t₂
-  checkˡ x t₁ t₂ eq | just t₁′ | just t₂′ = t₁′ , refl
-  checkˡ x t₁ t₂ () | just x₁ | nothing
-  checkˡ x t₁ t₂ () | nothing | _
-
-  checkʳ : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t″ → check x t₂ ≡ just t″
-  checkʳ x t₁ t₂ eq with check x t₁ | check x t₂
-  checkʳ x t₁ t₂ eq | just t₁′ | just t₂′ = t₂′ , refl
-  checkʳ x t₁ t₂ () | just x₁ | nothing
-  checkʳ x t₁ t₂ () | nothing | _
-
   check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t₁′ → ∃ λ t₂′ → t′ ≡ t₁′ fork t₂′ × check x t₁ ≡ just t₁′ × check x t₂ ≡ just t₂′
   check-fork x t₁ t₂ eq with check x t₁ | check x t₂
   check-fork x t₁ t₂ refl | just t₁′ | just t₂′ = t₁′ , t₂′ , refl , refl , refl
@@ -85,19 +73,19 @@ module for-Props where
   check-occurs-var x .x eq refl | just _ | ()
   check-occurs-var x .x () refl | nothing | _
 
-  check-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → ∃ λ y′ → t′ ≡ var y′
-  check-var x y eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
-  check-var {n} x .(thin x y′) eq | y′ , refl = y′ , just-inv (sym eq ⟨ trans ⟩ lem)
-    where
-    lem : var <$> thick x (thin x y′) ≡ just (var y′)
-    lem =
-      begin
-        var <$> thick x (thin x y′)
-      ≡⟨ cong (λ ξ → var <$> ξ) (thick-inv x y′) ⟩
-        var <$> just y′
-      ≡⟨ refl ⟩
-        just (var y′)
-      ∎
+  -- check-var : ∀ {n} x (y : Var (suc n)) {t′ : Term n} → check x (var y) ≡ just t′ → ∃ λ y′ → t′ ≡ var y′
+  -- check-var x y eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  -- check-var {n} x .(thin x y′) eq | y′ , refl = y′ , just-inv (sym eq ⟨ trans ⟩ lem)
+  --   where
+  --   lem : var <$> thick x (thin x y′) ≡ just (var y′)
+  --   lem =
+  --     begin
+  --       var <$> thick x (thin x y′)
+  --     ≡⟨ cong (λ ξ → var <$> ξ) (thick-inv x y′) ⟩
+  --       var <$> just y′
+  --     ≡⟨ refl ⟩
+  --       just (var y′)
+  --     ∎
 
   check-occurs : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ → (t″ t‴ : Term n) → substitute (t″ for x) t ≡ substitute (t‴ for x) t
   check-occurs x leaf eq t″ t‴ = refl
@@ -110,8 +98,9 @@ module for-Props where
     ≡⟨ sym (cong (maybe′ var t‴) (thick-inv x y′)) ⟩
       maybe′ var t‴ (thick x (thin x y′))
     ∎
-  check-occurs x (t₁ fork t₂) eq t″ t‴ with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
-  check-occurs x (t₁ fork t₂) eq t″ t‴ | _ , eq₁ | _ , eq₂ = check-occurs x t₁ eq₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ eq₂ t″ t‴
+  check-occurs x (t₁ fork t₂) eq t″ t‴ with check-fork x t₁ t₂ eq
+  check-occurs x (t₁ fork t₂) eq t″ t‴ | t₁′ , t₂′ , refl , prf₁ , prf₂ =
+    check-occurs x t₁ prf₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ prf₂ t″ t‴
 
   check-roundtrip : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
                   t ≡ substitute (rename (thin x)) t′
@@ -138,7 +127,7 @@ module for-Props where
         just t′
       ∎
   check-roundtrip x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
-  check-roundtrip x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
+  check-roundtrip x (t₁ fork t₂) eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
     check-roundtrip x t₁ prf₁ ⟨ cong₂ _fork_ ⟩ check-roundtrip x t₂ prf₂
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
@@ -168,7 +157,7 @@ module sub-Props where
   open import Data.Star.Properties
 
   sub-id : ∀ {m} → sub {m} ε ≗ var
-  sub-id = λ x → refl
+  sub-id = λ _ → refl
 
   sub-++ : ∀ {m n l} (σ : l ⇝⋆ m) (ρ : m ⇝⋆ n) → sub (σ ++ ρ) ≗ sub ρ ◇ sub σ
   sub-++ ε ρ y = refl
