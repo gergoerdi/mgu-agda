@@ -113,11 +113,11 @@ module for-Props where
   check-occurs x (t₁ fork t₂) eq t″ t‴ with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
   check-occurs x (t₁ fork t₂) eq t″ t‴ | _ , eq₁ | _ , eq₂ = check-occurs x t₁ eq₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ eq₂ t″ t‴
 
-  foo : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
-        t ≡ substitute (rename (thin x)) t′
-  foo x leaf refl = refl
-  foo x (var y) eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
-  foo x (var .(thin x y′)) {t′} eq | y′ , refl =
+  check-roundtrip : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
+                  t ≡ substitute (rename (thin x)) t′
+  check-roundtrip x leaf refl = refl
+  check-roundtrip x (var y) eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
+  check-roundtrip x (var .(thin x y′)) {t′} eq | y′ , refl =
     begin
       var (thin x y′)
     ≡⟨ refl ⟩
@@ -137,55 +137,16 @@ module for-Props where
       ≡⟨ eq ⟩
         just t′
       ∎
-  foo x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
-  foo x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
-    foo x t₁ prf₁ ⟨ cong₂ _fork_ ⟩ foo x t₂ prf₂
-
-  for-unify₀ : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
-               substitute (t′ for x) t ≡ substitute (t′ for x) (substitute (rename (thin x)) t′)
-  -- for-unify₀ x t prf = check-occurs x {!t!} {!!} {!!}
-  for-unify₀ x leaf refl = refl
-  for-unify₀ x (var y) eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
-  for-unify₀ x (var .(thin x y′)) {t′} eq | y′ , refl =
-    begin
-      maybe′ var t′ (thick x (thin x y′))
-    ≡⟨ cong (maybe′ var t′) (thick-inv x y′) ⟩
-      maybe′ var t′ (just y′)
-    ≡⟨ refl ⟩
-      var y′
-    ≡⟨ {!!} ⟩
-      {!!}
-    ≡⟨ {!!} ⟩
-      substitute (t′ for x) (substitute (rename (thin x)) t′)
-    ∎
-  for-unify₀ x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
-  for-unify₀ x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
-    {!!} ⟨ cong₂ _fork_ ⟩ {!!}
-  --   begin
-  --     substitute ((t₁′ fork t₂′) for x) t₁ fork substitute ((t₁′ fork t₂′) for x) t₂
-  --   ≡⟨ for-unify₀ x t₁ {!!} ⟨ cong₂ _fork_ ⟩ for-unify₀ x t₂ {!!} ⟩
-  --     {!!}
-  --   ≡⟨ {!!} ⟩
-  --     {!!}
-  --   ∎
-  -- for-unify₀ x (t₁ fork t₂) eq with checkˡ x t₁ t₂ eq | checkʳ x t₁ t₂ eq
-  -- for-unify₀ x (t₁ fork t₂) {t′} eq | t₁′ , eq₁ | t₂′ , eq₂ = {!t′!}
-  -- for-unify₀ x (t₁ fork t₂) {t′} eq | t₁′ , eq₁ | t₂′ , eq₂ with for-unify₀ x t₁ eq₁ | for-unify₀ x t₂ eq₂
-  -- ... | p | q =
-  --   begin
-  --     substitute (t′ for x) t₁ fork substitute (t′ for x) t₂
-  --   ≡⟨ {!p!} ⟨ cong₂ _fork_ ⟩ {!!} ⟩
-  --     {!!}
-  --   ≡⟨ {!!} ⟩
-  --     {!!}
-  --   ∎
+  check-roundtrip x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
+  check-roundtrip x (t₁ fork t₂) {.t₁′ fork .t₂′} eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
+    check-roundtrip x t₁ prf₁ ⟨ cong₂ _fork_ ⟩ check-roundtrip x t₂ prf₂
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
   for-unify {n} x t {t′} eq =
     begin
       substitute (t′ for x) t
-    ≡⟨ for-unify₀ x t eq ⟩
+    ≡⟨ cong (substitute (t′ for x)) (check-roundtrip x t eq) ⟩
       substitute (t′ for x) (substitute (rename (thin x)) t′)
     ≡⟨ substitute-rename (t′ for x) (thin x) t′ ⟩
       substitute (t′ for x ∘ thin x) t′
