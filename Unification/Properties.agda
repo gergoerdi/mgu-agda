@@ -99,8 +99,7 @@ module for-Props where
       maybe′ var t‴ (thick x (thin x y′))
     ∎
   check-occurs x (t₁ fork t₂) eq t″ t‴ with check-fork x t₁ t₂ eq
-  check-occurs x (t₁ fork t₂) eq t″ t‴ | t₁′ , t₂′ , refl , prf₁ , prf₂ =
-    check-occurs x t₁ prf₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ prf₂ t″ t‴
+  ... | t₁′ , t₂′ , refl , prf₁ , prf₂ = check-occurs x t₁ prf₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ prf₂ t″ t‴
 
   check-roundtrip : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
                   t ≡ substitute (rename (thin x)) t′
@@ -127,8 +126,7 @@ module for-Props where
         just t′
       ∎
   check-roundtrip x (t₁ fork t₂) eq with check-fork x t₁ t₂ eq
-  check-roundtrip x (t₁ fork t₂) eq | t₁′ , t₂′ , refl , prf₁ , prf₂ =
-    check-roundtrip x t₁ prf₁ ⟨ cong₂ _fork_ ⟩ check-roundtrip x t₂ prf₂
+  ... | t₁′ , t₂′ , refl , prf₁ , prf₂ = check-roundtrip x t₁ prf₁ ⟨ cong₂ _fork_ ⟩ check-roundtrip x t₂ prf₂
 
   for-unify : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
               substitute (t′ for x) t ≡ (t′ for x) x
