@@ -38,9 +38,6 @@ thin-solve {suc n} (suc x) (suc y) neq with thin-solve x y (neq ∘ cong suc)
 thin-solve {suc n} (suc x) (suc y) neq | y₀′ , eq = suc y₀′ , cong suc eq
 
 open import Data.Maybe
-open import Level using () renaming (zero to ℓ₀)
-open import Category.Functor
-open RawFunctor {ℓ₀} functor
 open import MaybeExtras
 
 thick-nofix : ∀ {n} x → thick {n} x x ≡ nothing
@@ -58,6 +55,10 @@ thick-thin {suc n} (suc x) zero = Just refl
 thick-thin {suc n} (suc x) (suc y) with thick x y | inspect (thick x) y
 thick-thin {suc n} (suc x) (suc y) | just y′ | [ eq ] = Just (cong suc (Partial-Just (subst (Partial _ _) eq (thick-thin x y))))
 thick-thin {suc n} (suc x) (suc y) | nothing | [ eq ] = Nothing (cong suc (Partial-Nothing (subst (Partial _ _) eq (thick-thin x y))))
+
+open import Level using () renaming (zero to ℓ₀)
+open import Category.Functor
+open RawFunctor {ℓ₀} functor
 
 thick-inv : ∀ {n} x y → thick {n} x (thin x y) ≡ just y
 thick-inv zero y = refl

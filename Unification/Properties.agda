@@ -4,6 +4,7 @@ open import Unification
 
 open import Data.Nat
 open import Data.Fin
+open import Data.Product
 open import Function using (_∘_; _⟨_⟩_; id; flip)
 
 open import Relation.Binary.Core
@@ -37,8 +38,11 @@ module substitute-Props where
   substitute-leaf : ∀ {m n} {f : m ⇝ n} → leaf ≡ substitute f leaf
   substitute-leaf = refl
 
-  substitute-fork : ∀ {m n} {f : m ⇝ n} {t₁ t₂} {t₁′ t₂′} → t₁′ ≡ substitute f t₁ → t₂′ ≡ substitute f t₂ → t₁′ fork t₂′ ≡ substitute f (t₁ fork t₂)
-  substitute-fork eq₁ eq₂ = cong₂ _fork_ eq₁ eq₂
+  substitute-fork : ∀ {m n} {f : m ⇝ n} t₁ t₂ {t₁′ t₂′} → t₁′ ≡ substitute f t₁ → t₂′ ≡ substitute f t₂ → t₁′ fork t₂′ ≡ substitute f (t₁ fork t₂)
+  substitute-fork _ _ eq₁ eq₂ = cong₂ _fork_ eq₁ eq₂
+
+  substitute-fork-inv : ∀ {m n} {f : m ⇝ n} t₁ t₂ {t₁′ t₂′} → t₁′ fork t₂′ ≡ substitute f (t₁ fork t₂) → t₁′ ≡ substitute f t₁ × t₂′ ≡ substitute f t₂
+  substitute-fork-inv _ _ refl = refl , refl
 
   substitute-assoc : ∀ {l m n} (f : m ⇝ n) (g : l ⇝ m) → substitute (substitute f ∘ g) ≗ substitute f ∘ substitute g
   substitute-assoc f g leaf = refl
@@ -50,10 +54,17 @@ module substitute-Props where
   substitute-rename f g (var x) = refl
   substitute-rename f g (t₁ fork t₂) = substitute-rename f g t₁ ⟨ cong₂ _fork_ ⟩ substitute-rename f g t₂
 
-  ◇-assoc : ∀ {k l m n} (f : m ⇝ n) (g : l ⇝ m) (h : k ⇝ l) → (f ◇ g) ◇ h ≗ f ◇ (g ◇ h)
-  ◇-assoc f g h x =  substitute-assoc f g (h x)
+  ◇-idˡ : ∀ {m n} (f : m ⇝ n) → var ◇ f ≗ f
+  ◇-idˡ f = substitute-id ∘ f
 
-open import Data.Product
+  ◇-assoc : ∀ {k l m n} (f : m ⇝ n) (g : l ⇝ m) (h : k ⇝ l) → (f ◇ g) ◇ h ≗ f ◇ (g ◇ h)
+  ◇-assoc f g h =  substitute-assoc f g ∘ h
+
+  ◇-congˡ : ∀ {l m n} (f : m ⇝ n) {g g′ : l ⇝ m} → g ≗ g′ → f ◇ g ≗ f ◇ g′
+  ◇-congˡ f {g} {g′} prf = cong (substitute f) ∘ prf
+
+  ◇-congʳ : ∀ {l m n} {f f′ : m ⇝ n} → f ≗ f′ → (g : l ⇝ m) → f ◇ g ≗ f′ ◇ g
+  ◇-congʳ {l} {f = f} {f′ = f′} prf g = substitute-≗ prf ∘ g
 
 module for-Props where
   for-thin : ∀ {n} {t : Term n} {x y} → (t for x) (thin x y) ≡ var y
@@ -62,6 +73,7 @@ module for-Props where
     maybe-just : ∀ {f y mx x} → mx ≡ just x → maybe′ f y mx ≡ f x
     maybe-just refl = refl
 
+module check-Props where
   check-fork : ∀ {n} x (t₁ t₂ : Term (suc n)) {t′ : Term n} → check x (t₁ fork t₂) ≡ just t′ → ∃ λ t₁′ → ∃ λ t₂′ → t′ ≡ t₁′ fork t₂′ × check x t₁ ≡ just t₁′ × check x t₂ ≡ just t₂′
   check-fork x t₁ t₂ eq with check x t₁ | check x t₂
   check-fork x t₁ t₂ refl | just t₁′ | just t₂′ = t₁′ , t₂′ , refl , refl , refl
@@ -102,7 +114,7 @@ module for-Props where
   ... | t₁′ , t₂′ , refl , prf₁ , prf₂ = check-occurs x t₁ prf₁ t″ t‴ ⟨ cong₂ _fork_ ⟩ check-occurs x t₂ prf₂ t″ t‴
 
   check-roundtrip : ∀ {n} x (t : Term (suc n)) {t′ : Term n} → check x t ≡ just t′ →
-                  t ≡ substitute (rename (thin x)) t′
+                    t ≡ substitute (rename (thin x)) t′
   check-roundtrip x leaf refl = refl
   check-roundtrip x (var y) eq with force-Just (check-occurs-var x y eq) (thick-thin x y)
   check-roundtrip x (var .(thin x y′)) {t′} eq | y′ , refl =

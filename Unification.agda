@@ -73,14 +73,12 @@ m ⇝⋆□ = ∃ (_⇝⋆_ m)
 _/_◅?_ : ∀ {m} (t′ : Term m) (x : Var (suc m)) (a : m ⇝⋆□) → (suc m ⇝⋆□)
 t′ / x ◅? (n , σ) = n , t′ / x ◅ σ
 
-mgu : ∀ {m} (s t : Term m) → Maybe (m ⇝⋆□)
-mgu {m} s t = go s t (m , ε)
-  where
-  flexFlex : ∀ {m} (x y : Var m) → ∃ (_⇝⋆_ m)
+module amgu where
+  flexFlex : ∀ {m} (x y : Var m) → (m ⇝⋆□)
   flexFlex {zero} () ()
   flexFlex {suc m} x y = maybe′ (λ y′ → m , var y′ / x ◅ ε) (suc m , ε) (thick x y)
 
-  flexRigid : ∀ {m} (x : Var m) → (t : Term m) → Maybe (∃ (_⇝⋆_ m))
+  flexRigid : ∀ {m} (x : Var m) → (t : Term m) → Maybe (m ⇝⋆□)
   flexRigid {zero} () t
   flexRigid {suc m} x t = (λ t′ → m , t′ / x ◅ ε) <$> check x t
 
@@ -93,3 +91,6 @@ mgu {m} s t = go s t (m , ε)
   go (var x)      t            (m , ε)         = flexRigid x t
   go t            (var x)      (m , ε)         = flexRigid x t
   go s            t            (n , r / z ◅ σ) = (λ a → r / z ◅? a) <$> go (substitute (r for z) s) (substitute (r for z) t) (n , σ)
+
+mgu : ∀ {m} (s t : Term m) → Maybe (m ⇝⋆□)
+mgu {m} s t = amgu.go s t (m , ε)
